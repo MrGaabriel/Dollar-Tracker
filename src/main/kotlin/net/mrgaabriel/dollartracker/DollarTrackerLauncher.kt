@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.entities.Activity
 import org.slf4j.LoggerFactory
 import java.awt.Color
 import java.io.File
+import java.text.DecimalFormat
 import java.time.OffsetDateTime
 import kotlin.concurrent.thread
 
@@ -89,7 +90,14 @@ object DollarTrackerLauncher {
 
         val results = payload["results"].obj
         val usdbrl = results["USD_BRL"].obj
-        val value = usdbrl["val"].double
+
+        // Gambiarra
+        val splittedValue = (usdbrl["val"].double).toString().split(".")
+
+        val integers = splittedValue[0]
+        val cents = splittedValue[1].substring(0..1)
+
+        val value = "${integers}.${cents}".toDouble()
 
         logger.info("Preço atual do dólar: ${value} BRL")
 
