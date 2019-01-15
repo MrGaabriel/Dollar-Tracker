@@ -52,7 +52,11 @@ object DollarTrackerLauncher {
 
         GlobalScope.launch {
             while (true) {
-                checkDollarPrice()
+                try {
+                    checkDollarPrice()
+                } catch (e: Exception) {
+                    logger.error("Erro!", e)
+                }
 
                 delay(2 * (1000 * 60)) // Dois minutos
             }
@@ -64,7 +68,11 @@ object DollarTrackerLauncher {
 
                 when (next) {
                     "force_check" -> {
-                        checkDollarPrice()
+                        try {
+                            checkDollarPrice()
+                        } catch (e: Exception) {
+                            logger.error("Erro!", e)
+                        }
                     }
                 }
             }
@@ -84,6 +92,8 @@ object DollarTrackerLauncher {
         val body = HttpRequest.get("http://free.currencyconverterapi.com/api/v5/convert?q=USD_BRL")
             .userAgent("Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:64.0) Gecko/20100101 Firefox/64.0")
             .body()
+
+        logger.info("REQUEST BODY : $body")
 
         val payload = JsonParser().parse(body)
 
