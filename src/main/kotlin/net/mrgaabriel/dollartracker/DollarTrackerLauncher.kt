@@ -54,7 +54,7 @@ object DollarTrackerLauncher {
             while (true) {
                 checkDollarPrice()
 
-                delay(10 * (1000 * 60)) // Dez minutos
+                delay(2 * (1000 * 60)) // Dois minutos
             }
         }
 
