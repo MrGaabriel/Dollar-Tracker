@@ -6,7 +6,7 @@
 Você pode clonar o repositório e compilar você mesmo!
 
 ### Como eu consigo compilar!?
-Você precisará ter [Java](https://java.com/pt_BR/download/), [Git](https://git-scm.com) e [Maven](hhttps://maven.apache.org/) instalados e configurados em sua máquina!
+Você precisará ter [Java](https://java.com/pt_BR/download/), [Git](https://git-scm.com) e [Maven](https://maven.apache.org/) instalados e configurados em sua máquina!
 
 1. Use `git clone https://github.com/MrGaabriel/Dollar-Tracker` em qualquer pasta
 2. Para compilar, use `mvn install` em uma aba do Terminal
