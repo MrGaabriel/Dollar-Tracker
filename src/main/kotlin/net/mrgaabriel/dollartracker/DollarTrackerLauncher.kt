@@ -58,7 +58,7 @@ object DollarTrackerLauncher {
                     logger.error("Erro!", e)
                 }
 
-                delay(2 * (1000 * 60)) // Dois minutos
+                delay(5 * (1000 * 60)) // Cinco minutos
             }
         }
 
