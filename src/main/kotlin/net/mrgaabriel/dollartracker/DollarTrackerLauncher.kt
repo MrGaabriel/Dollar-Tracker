@@ -89,7 +89,7 @@ object DollarTrackerLauncher {
             lastValueFile.writeText("0")
         }
 
-        val body = HttpRequest.get("http://free.currencyconverterapi.com/api/v5/convert?q=USD_BRL")
+        val body = HttpRequest.get("https://api.exchangeratesapi.io/latest?base=USD")
             .userAgent("Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:64.0) Gecko/20100101 Firefox/64.0")
             .body()
 
@@ -97,9 +97,8 @@ object DollarTrackerLauncher {
 
         val payload = JsonParser().parse(body)
 
-        val results = payload["results"].obj
-        val usdbrl = results["USD_BRL"].obj
-        val value = usdbrl["val"].double
+        val rates = payload["rates"].obj
+        val value = roundDecimalValues(rates["BRL"].double, 2)
 
         logger.info("Preço atual do dólar: ${value} BRL")
 
@@ -136,6 +135,16 @@ object DollarTrackerLauncher {
 
         val channel = jda.getTextChannelById(config.channelId)
         channel.sendMessage(builder.build()).queue()
+    }
+
+    fun roundDecimalValues(value: Double, places: Int): Double {
+        var value = value
+        if (places < 0) throw IllegalArgumentException()
+
+        val factor = Math.pow(10.0, places.toDouble()).toLong()
+        value *= factor
+        val tmp = Math.round(value)
+        return tmp.toDouble() / factor
     }
 }
 
