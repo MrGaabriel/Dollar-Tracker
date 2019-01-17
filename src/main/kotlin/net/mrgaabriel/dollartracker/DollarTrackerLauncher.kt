@@ -133,8 +133,8 @@ object DollarTrackerLauncher {
 
         lastValueFile.writeText("${value}")
 
-        val channel = jda.getTextChannelById(config.channelId)
-        channel.sendMessage(builder.build()).queue()
+        val channels = config.channelIds.map { jda.getTextChannelById(it) }
+        channels.forEach { it.sendMessage(builder.build()).queue() }
     }
 
     fun roundDecimalValues(value: Double, places: Int): Double {
@@ -148,4 +148,4 @@ object DollarTrackerLauncher {
     }
 }
 
-data class BotConfig(val clientToken: String = "Client token do Bot", val channelId: String = "Channel ID")
+data class BotConfig(val clientToken: String = "Client token do Bot", val channelIds: List<String> = listOf())
