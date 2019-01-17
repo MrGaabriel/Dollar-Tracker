@@ -58,7 +58,7 @@ object DollarTrackerLauncher {
                     logger.error("Erro!", e)
                 }
 
-                delay(5 * (1000 * 60)) // Cinco minutos
+                delay(60 * (1000 * 60)) // Uma hora
             }
         }
 
@@ -89,7 +89,7 @@ object DollarTrackerLauncher {
             lastValueFile.writeText("0")
         }
 
-        val body = HttpRequest.get("https://api.exchangeratesapi.io/latest?base=USD")
+        val body = HttpRequest.get("http://www.apilayer.net/api/live?access_key=${config.apiKey}&format=1")
             .userAgent("Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:64.0) Gecko/20100101 Firefox/64.0")
             .body()
 
@@ -97,8 +97,8 @@ object DollarTrackerLauncher {
 
         val payload = JsonParser().parse(body)
 
-        val rates = payload["rates"].obj
-        val value = roundDecimalValues(rates["BRL"].double, 2)
+        val rates = payload["quotes"].obj
+        val value = roundDecimalValues(rates["USDBRL"].double, 2)
 
         logger.info("Preço atual do dólar: ${value} BRL")
 
@@ -148,4 +148,4 @@ object DollarTrackerLauncher {
     }
 }
 
-data class BotConfig(val clientToken: String = "Client token do Bot", val channelIds: List<String> = listOf())
+data class BotConfig(val clientToken: String = "Client token do Bot", val channelIds: List<String> = listOf(), val apiKey: String = "API Key")
