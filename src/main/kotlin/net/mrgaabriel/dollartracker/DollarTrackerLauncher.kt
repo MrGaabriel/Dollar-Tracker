@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.entities.Activity
 import org.slf4j.LoggerFactory
 import java.awt.Color
 import java.io.File
+import java.time.DayOfWeek
 import java.time.OffsetDateTime
 import kotlin.concurrent.thread
 
@@ -23,6 +24,8 @@ object DollarTrackerLauncher {
 
     lateinit var jda: JDA
     lateinit var config: BotConfig
+
+    val values = mutableListOf<Double>() // Isto guardará os preços ao longo do dia
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -40,6 +43,8 @@ object DollarTrackerLauncher {
             lastValueFile.writeText("0")
         }
 
+        values.add(lastValueFile.readText(Charsets.UTF_8).toDouble())
+
         config = Gson().fromJson(file.readText(Charsets.UTF_8), BotConfig::class.java)
 
         val builder = JDABuilder(AccountType.BOT)
@@ -50,15 +55,84 @@ object DollarTrackerLauncher {
         jda = builder.build().awaitReady()
         logger.info("OK! Bot iniciado - ${jda.selfUser.name}#${jda.selfUser.discriminator} - (${jda.selfUser.id})")
 
-        GlobalScope.launch {
+        thread(name = "Dollar Monitor") {
             while (true) {
                 try {
-                    checkDollarPrice()
+                    val now = OffsetDateTime.now()
+
+                    if (now.minute == 0 && now.second == 0) {
+                        if (now.dayOfWeek == DayOfWeek.SATURDAY || now.dayOfWeek == DayOfWeek.SUNDAY) {
+                            continue
+                        }
+
+                        if (now.hour == 18 && now.second == 0) { // Bolsa fechou!
+                            checkDollarPrice()
+
+                            val builder = EmbedBuilder()
+
+                            builder.setTitle("A bolsa de valores fechou!")
+
+                            val firstValue = values.first()
+                            val lastValue = values.last()
+
+                            val color = when {
+                                firstValue > lastValue -> Color(25, 167, 25)
+                                firstValue < lastValue -> Color(172, 26, 23)
+
+                                else -> Color.YELLOW
+                            }
+
+                            val description = when {
+                                firstValue > lastValue -> "O dólar fechou em baixa!\nValor atual do dólar: `$lastValue BRL`"
+                                firstValue < lastValue -> "O dólar fechou em alta!\nValor atual do dólar: `$lastValue BRL`"
+
+                                else -> "O dólar fechou sem mudanças!\nValor atual do dólar: `$lastValue BRL`"
+                            }
+
+                            builder.addField(
+                                "\uD83D\uDCC8 Pico do dólar (valor mais alto do dia inteiro)",
+                                "${values.sortedByDescending { it }.first()}",
+                                true
+                            )
+                            builder.addField(
+                                "\uD83D\uDCC9 Baixa do dólar (valor mais baixo do dia inteiro)",
+                                "${values.sortedBy { it }.first()}",
+                                true
+                            )
+
+                            builder.setDescription(description)
+
+                            builder.setColor(color)
+
+                            builder.setTimestamp(now)
+                            builder.setFooter("No horário de Brasília", null)
+
+                            val channels = config.channelIds.map { jda.getTextChannelById(it) }
+                            channels.forEach {
+                                it.sendMessage(builder.build()).queue()
+                            }
+
+                            values.clear()
+                            continue
+                        }
+
+                        if (now.hour !in 9..18) { // Horário de negociação da bolsa
+                            continue
+                        }
+
+                        try {
+                            checkDollarPrice()
+
+                            Thread.sleep(1000)
+                        } catch (e: Exception) {
+                            logger.error("Erro!", e)
+                        }
+
+                        continue
+                    }
                 } catch (e: Exception) {
                     logger.error("Erro!", e)
                 }
-
-                delay(60 * (1000 * 60)) // Uma hora
             }
         }
 
@@ -66,15 +140,7 @@ object DollarTrackerLauncher {
             while (true) {
                 val next = readLine()!!.toLowerCase()
 
-                when (next) {
-                    "force_check" -> {
-                        try {
-                            checkDollarPrice()
-                        } catch (e: Exception) {
-                            logger.error("Erro!", e)
-                        }
-                    }
-                }
+                handleCommand(next)
             }
         }
     }
@@ -89,18 +155,21 @@ object DollarTrackerLauncher {
             lastValueFile.writeText("0")
         }
 
-        val body = HttpRequest.get("http://www.apilayer.net/api/live?access_key=${config.apiKey}&format=1")
+        val request = HttpRequest.get("http://www.apilayer.net/api/live?access_key=${config.apiKey}&format=1&currencies=BRL")
             .userAgent("Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:64.0) Gecko/20100101 Firefox/64.0")
-            .body()
 
-        logger.info("REQUEST BODY : $body")
+        val body = request.body()
+
+        if (!request.ok()) {
+            throw RuntimeException("Request is not OK! Request body: $body")
+        }
 
         val payload = JsonParser().parse(body)
 
         val rates = payload["quotes"].obj
         val value = roundDecimalValues(rates["USDBRL"].double, 2)
 
-        logger.info("Preço atual do dólar: ${value} BRL")
+        logger.info("Preço atual do dólar: $value BRL")
 
         val builder = EmbedBuilder()
 
@@ -111,30 +180,57 @@ object DollarTrackerLauncher {
             return
         }
 
-        if (value > lastValue) {
-            logger.info("Dólar subiu! :(")
+        values.add(value)
 
-            builder.setTitle("Dólar subiu :(")
+        val color = when {
+            value > lastValue -> Color(172, 26, 23)
+            value < lastValue -> Color(25, 167, 25)
 
-            builder.setDescription("Valor atual do dólar: `${value} BRL`")
-            builder.setColor(Color.RED)
-
-            builder.setTimestamp(OffsetDateTime.now())
-        } else {
-            logger.info("Dólar caiu! :)")
-
-            builder.setTitle("Dólar caiu :)")
-
-            builder.setDescription("Valor atual do dólar: `${value} BRL`")
-            builder.setColor(Color.GREEN)
-
-            builder.setTimestamp(OffsetDateTime.now())
+            else -> Color.YELLOW
         }
 
-        lastValueFile.writeText("${value}")
+        val title = when {
+            value > lastValue -> "Dólar subiu! :("
+            value < lastValue -> "Dólar caiu! :)"
+
+            else -> "¯\\_(ツ)_/¯"
+        }
+
+        builder.setTitle(title)
+        builder.setColor(color)
+
+        builder.setDescription("Valor atual do dólar: `$value BRL`")
+
+        builder.setTimestamp(OffsetDateTime.now())
+        builder.setFooter("No horário de Brasília", null)
+
+        lastValueFile.writeText("$value")
 
         val channels = config.channelIds.map { jda.getTextChannelById(it) }
         channels.forEach { it.sendMessage(builder.build()).queue() }
+    }
+
+    fun handleCommand(str: String) {
+        when (str) {
+            "force_check" -> {
+                try {
+                    checkDollarPrice()
+                } catch (e: Exception) {
+                    logger.error("Erro!", e)
+                }
+            }
+
+            "reload_config" -> {
+                val file = File("config.json")
+                config = Gson().fromJson(file.readText(Charsets.UTF_8), BotConfig::class.java)
+
+                logger.info("Configuração recarregada com sucesso!")
+            }
+
+            "config" -> {
+                logger.info(Gson().toJson(config))
+            }
+        }
     }
 
     fun roundDecimalValues(value: Double, places: Int): Double {
