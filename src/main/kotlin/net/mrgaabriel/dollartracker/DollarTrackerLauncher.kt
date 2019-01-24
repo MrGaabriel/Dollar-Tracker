@@ -122,12 +122,11 @@ object DollarTrackerLauncher {
 
                         try {
                             checkDollarPrice()
-
-                            Thread.sleep(1000)
                         } catch (e: Exception) {
                             logger.error("Erro!", e)
                         }
 
+                        Thread.sleep(1000)
                         continue
                     }
                 } catch (e: Exception) {
