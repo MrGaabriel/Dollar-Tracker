@@ -107,9 +107,11 @@ object DollarTrackerLauncher {
                             builder.setTimestamp(now)
                             builder.setFooter("No horário de Brasília", null)
 
+                            val embed = builder.build()
+
                             val channels = config.channelIds.map { jda.getTextChannelById(it) }
                             channels.forEach {
-                                it.sendMessage(builder.build()).queue()
+                                it.sendMessage(embed).queue()
                             }
 
                             values.clear()
