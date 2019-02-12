@@ -168,7 +168,7 @@ object DollarTrackerLauncher {
         val payload = JsonParser().parse(body)
 
         val data = payload["data"].obj
-        val value = roundDecimalValues(rates["BRL"].double, 2)
+        val value = roundDecimalValues(data["BRL"].double, 2)
 
         logger.info("Preço atual do dólar: $value BRL")
 
