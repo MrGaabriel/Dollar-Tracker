@@ -60,7 +60,7 @@ object DollarTrackerLauncher {
                 try {
                     val now = OffsetDateTime.now()
 
-                    if (now.minute == 0 && now.second == 0) {
+                    if (now.minute % 5 == 0 && now.second == 0) {
                         if (now.dayOfWeek == DayOfWeek.SATURDAY || now.dayOfWeek == DayOfWeek.SUNDAY) {
                             continue
                         }
@@ -156,7 +156,7 @@ object DollarTrackerLauncher {
             lastValueFile.writeText("0")
         }
 
-        val request = HttpRequest.get("http://www.apilayer.net/api/live?access_key=${config.apiKey}&format=1&currencies=BRL")
+        val request = HttpRequest.get("https://www.worldtradingdata.com/api/v1/forex?base=USD&sort=newest&api_token=${config.apiKey}")
             .userAgent("Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:64.0) Gecko/20100101 Firefox/64.0")
 
         val body = request.body()
@@ -167,8 +167,8 @@ object DollarTrackerLauncher {
 
         val payload = JsonParser().parse(body)
 
-        val rates = payload["quotes"].obj
-        val value = roundDecimalValues(rates["USDBRL"].double, 2)
+        val data = payload["data"].obj
+        val value = roundDecimalValues(rates["BRL"].double, 2)
 
         logger.info("Preço atual do dólar: $value BRL")
 
